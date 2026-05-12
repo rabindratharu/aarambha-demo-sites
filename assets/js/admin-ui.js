@@ -13,11 +13,6 @@
      */
     aarambhaDSAjax = {
 
-        /**
-         * Call the AJAX 
-         * 
-         * @return AJAX 
-         */
         call: function (data) {
             return $.ajax({
                 url: ajaxurl,
@@ -26,57 +21,22 @@
             })
         },
 
-        /**
-         * Retrieve the demo from the server.
-         * 
-         * @param object data 
-         * 
-         * @return bool|object $.ajax
-         */
         getDemo: function (data) {
             return this.call(data)
         },
 
-        /**
-         * Retrieve the demo from the server.
-         * 
-         * @param object data 
-         * 
-         * @return bool|object $.ajax
-         */
         listPlugins: function (data) {
             return this.call(data)
         },
 
-        /**
-         * Install the plugin.
-         * 
-         * @param object data 
-         * 
-         * @return $.ajax
-         */
         installActivatePlugin: function (data) {
             return this.call(data)
         },
 
-        /**
-         * Prepare the demo import.
-         * 
-         * @param object data 
-         * 
-         * @return bool|object $.ajax
-         */
         prepareImport: function (data) {
             return this.call(data)
         },
 
-        /**
-         * Imports the content.
-         * 
-         * @param object data 
-         * 
-         * @return bool|object $.ajax
-         */
         import: function (data) {
             return this.call(data)
         },
@@ -104,9 +64,6 @@
             this.bind()
         },
 
-        /**
-         * Register the properties
-         */
         registerVars: function () {
             this.doc = $(document)
             this.win = $(window)
@@ -117,15 +74,11 @@
             this.loading = `<div class="swal2-actions swal2-loading"><button class="swal2-styled swal2-confirm"></button></div>`
         },
 
-        // Bind all the functions together.
         bind: function () {
             this.attachClick()
             this.searchDemos()
         },
 
-        /**
-         * Attach the click events to the DOM.
-         */
         attachClick: function () {
             var doc = this.doc
 
@@ -162,11 +115,6 @@
             })
         },
 
-        /**
-         * Filter the demos.
-         * 
-         * @param object event  Click event 
-         */
         filterDemos: function (event) {
             event.preventDefault()
             let el = event.currentTarget
@@ -208,12 +156,8 @@
             } else {
                 countEl.innerHTML = count
             }
-
         },
 
-        /**
-         * Searches the demo from the search input.
-         */
         searchDemos: function () {
             var searchInput = document.querySelector('.aarambha-ds--search__input');
             let allThemes = document.querySelectorAll('.theme')
@@ -246,11 +190,6 @@
             })
         },
 
-        /**
-         * Prepares the demo.
-         * 
-         * @param object event 
-         */
         retrieveDemo: function (event) {
             event.preventDefault();
 
@@ -271,19 +210,14 @@
             }
 
             if (aarambhaDS.ajaxlocked) {
-                // One click demo import AJAX is already running.
                 return
             }
 
             if ('pro' === demoType) {
-                // User wants to import 'Pro' demo.
-                // So we need to check additional parameters.
-
                 var proceed = true,
                     tplHtml
                 if ('free' === themeType) {
 
-                    // Purchase theme.
                     proceed = false
                     let template = wp.template('aarambha-ds--purchase__theme')
                     tplHtml = template({
@@ -296,7 +230,6 @@
                     })
 
                 } else if ('pro' === themeType && 'false' == activated) {
-                    // Installed pro theme but not activated.
 
                     proceed = false
                     let template = wp.template('aarambha-ds--activate__theme')
@@ -308,30 +241,23 @@
                             link: aarambhaDSData.activateLink
                         }
                     })
-
                 }
 
                 if (!proceed) {
-                    // We don't need to proceed further.
                     Swal.fire({
                         showConfirmButton: false,
                         html: tplHtml
                     })
-
                     return
                 }
 
                 aarambhaDS.ajaxlocked = true
-
-                // Pro theme so set the license key to retrieve demo.
                 data.key = aarambhaDSData.license
             }
 
             $(targetEl).parent('.theme').addClass('loading')
 
-
             if (!navigator.onLine) {
-                // No internet connection detected so fail.
                 let tplData = {
                     title: aarambhaDSData.offlineTitle,
                     message: aarambhaDSData.offlineMsg
@@ -354,12 +280,9 @@
                     aarambhaDS.ajaxlocked = false
 
                     let template = wp.template('aarambha-ds--demo__information')
-
                     let tplData = response.data.demo
-
                     let html = template(tplData)
 
-                    // Display sweetalert.
                     Swal.fire({
                         showCloseButton: true,
                         focusCancel: false,
@@ -384,7 +307,6 @@
                 }
             })
 
-            // When AJAX fails.
             ajaxResponse.fail((xhr, status, error) => {
 
                 $(targetEl).parent('.theme').removeClass('loading')
@@ -396,13 +318,9 @@
                 }
 
                 aarambhaDSHelpers.showFailedPopup(tplData)
-
             })
         },
 
-        /**
-         * List the plugins used for selected demo.
-         */
         listPlugins: function (event) {
             event.preventDefault();
             var el = event.currentTarget || event.target,
@@ -439,7 +357,6 @@
                             var template = wp.template('aarambha-ds--content__choose')
                             var html = template()
 
-
                             el.dataset.action = 'prepare-import'
                             el.dataset.nonce = aarambhaDSData.nonce
                             el.innerText = aarambhaDSData.importContent
@@ -447,7 +364,6 @@
                             el.classList.add('aarambha-ds--action__import')
 
                             targetEl.innerHTML = html
-
 
                         } else {
                             el.dataset.action = 'install-plugins'
@@ -463,8 +379,6 @@
 
                         $(el).fadeIn()
 
-
-
                     } else {
                         $(targetEl).parent('.theme').removeClass('loading')
                         aarambhaDS.ajaxlocked = false
@@ -476,8 +390,6 @@
 
                         aarambhaDSHelpers.showFailedPopup(tplData)
                     }
-
-
                 })
 
                 ajaxResponse.fail(function (jqXHR, textStatus, error) {
@@ -490,15 +402,11 @@
                     }
 
                     aarambhaDSHelpers.showFailedPopup(tplData)
-
                 })
 
             }, 500);
         },
 
-        /**
-         * Install plugins
-         */
         installPlugins: function (event, id) {
             event.stopPropagation()
             event.preventDefault()
@@ -573,7 +481,6 @@
                         aarambhaDS.ajaxlocked = false
 
                         if ('activated' == response.data.status) {
-                            // Plugin is activated, proceed installation of next plugin.
                             count++
 
                             actionEl.innerHTML = aarambhaDSData.active
@@ -600,15 +507,11 @@
 
                                 targetEl.innerHTML = html
 
-
                                 $(el).fadeIn()
                             }
-
                         }
 
                         if ('activate' == response.data.status) {
-                            // Activate the plugin.
-
                             plugin.dataset.action = 'activate'
                             plugin.dataset.nonce = response.data.nonce
 
@@ -644,11 +547,6 @@
             }
         },
 
-        /**
-         * Prepare the import process.
-         * 
-         * @param  event 
-         */
         prepareImport: function (event) {
             event.preventDefault()
 
@@ -718,7 +616,6 @@
                 prepare: aarambhaDSData.prepare
             })
 
-
             $(el).hide(0, () => {
                 $(parent).append(progressHtml)
             })
@@ -732,7 +629,6 @@
 
                     var data = response.data
                     var files = data.files
-
                     var filesKey = Object.keys(files);
 
                     if ('complete' === contentType) {
@@ -740,8 +636,14 @@
                         data.steps = steps
                     }
 
-                    var firstStep = steps[0]
+                    // Store all DOM context in the response object so that
+                    // import() and complete() never need to read from event,
+                    // which becomes stale after async hops.
+                    data.slug   = slug
+                    data.target = target
+                    data.parent = parent
 
+                    var firstStep = steps[0]
                     data.action = `${firstStep}-import`
 
                     setTimeout(() => {
@@ -751,6 +653,7 @@
                     }, 500);
 
                     aarambhaDS.import(event, data)
+
                 } else {
 
                     let tplData = {
@@ -771,36 +674,36 @@
                 }
 
                 aarambhaDSHelpers.showFailedPopup(tplData)
-
             })
 
             return;
-
         },
 
         /**
          * Start the import process.
-         * 
+         *
          * @param object event
-         * @param object data
+         * @param object response
          */
         import: function (event, response) {
-            var el = event.currentTarget || event.target,
-                parent = el.parentNode,
-                nonce = response.nonce,
-                slug = el.dataset.slug,
+            // Read DOM context from the response object rather than re-reading
+            // from event, which may be stale/detached after multiple async hops.
+            var slug   = response.slug,
+                target = response.target,
+                parent = response.parent,
+                nonce  = response.nonce,
                 totalSteps = response.steps.length,
-                steps = response.steps,
-                data = {
+                steps  = response.steps,
+                data   = {
                     slug,
                     nonce,
                     action: response.action,
-                    steps: response.steps,
-                    files: response.files
+                    steps:  response.steps,
+                    files:  response.files
                 }
 
             if (stepsIndex > totalSteps) {
-                aarambhaDS.complete(response)
+                aarambhaDS.complete(event, response)
                 return
             }
 
@@ -820,23 +723,31 @@
                         var actionName = res.data.action
 
                         if ('content-import' == actionName) {
-                            // We don't have to set anything.
-                            // re-iterate thorough the process.
-
+                            // Carry DOM context forward into recursive call
+                            res.data.slug   = slug
+                            res.data.target = target
+                            res.data.parent = parent
                             response = res.data
                             aarambhaDS.import(event, response)
                             return
 
                         } else if ('finalized' == actionName) {
+                            // Carry DOM context so complete() can update the UI
+                            res.data.slug   = slug
+                            res.data.target = target
+                            res.data.parent = parent
                             aarambhaDS.complete(event, res.data)
-                        } else {
 
-                            // Proceed to other steps.
+                        } else {
+                            // Advance to next step, carrying context forward
                             stepsIndex++
                             var step = steps[stepsIndex]
                             response.stepsIndex = stepsIndex
-                            response.action = `${step}-import`
-                            response.nonce = res.data.nonce
+                            response.action     = `${step}-import`
+                            response.nonce      = res.data.nonce
+                            response.slug       = slug
+                            response.target     = target
+                            response.parent     = parent
 
                             $(parent)
                                 .find('.import-progress--bar')
@@ -845,14 +756,11 @@
                             setTimeout(() => {
                                 aarambhaDS.import(event, response)
                             }, 1000)
-
                         }
 
                     } else {
-                        // Cannot proceed with the import due to some problems.
-
                         let tplData = {
-                            title: res.data.title,
+                            title:   res.data.title,
                             message: res.data.message
                         }
 
@@ -861,33 +769,41 @@
                 })
 
                 ajaxResponse.fail((xhr, status, err) => {
-                    // Cannot proceed with the Import.
                     aarambhaDS.ajaxlocked = false
 
                     let tplData = {
-                        title: err,
+                        title:   err,
                         message: aarambhaDSData.failed
                     }
 
                     aarambhaDSHelpers.showFailedPopup(tplData)
                 })
-
             }
         },
 
-        // Finalize the import process.
+        /**
+         * Finalize the import process.
+         *
+         * @param object event
+         * @param object data  Contains target and parent carried from prepareImport.
+         */
         complete: function (event, data) {
-            var el = event.currentTarget || event.target,
-                parent = el.parentNode,
-                target = el.dataset.target
+            // Use context from data — never read from event here,
+            // as event.currentTarget is unreliable after async chains.
+            var target = data.target
+            var parent = data.parent
 
             var template = wp.template('aarambha-ds--import__complete')
             var html = template()
 
-            let targetEl = document.querySelector('.' + target)
-            targetEl.innerHTML = html
+            var targetEl = document.querySelector('.' + target)
+            if (targetEl) {
+                targetEl.innerHTML = html
+            }
 
-            parent.innerHTML = ''
+            if (parent) {
+                parent.innerHTML = ''
+            }
         }
 
     }
@@ -896,6 +812,5 @@
         // DOM is ready.
         aarambhaDS.init();
     })
-
 
 })(jQuery)

@@ -174,14 +174,14 @@ final class Aarambha_DS
      */
     private function runActions()
     {
-        // Load the textdomain.
+        // Load the textdomain first at init.
         add_action('init', [$this, 'loadTextdomain']);
+
+        // Hook ajax and plugins_loaded after textdomain is available.
         add_action('plugins_loaded', [$this, 'pluginsLoaded']);
 
-        $this->ajax();
-
-
-
+        // Register AJAX handlers at init so translations are loaded first.
+        add_action('init', [$this, 'ajax']);
     }
 
     /**
@@ -217,7 +217,7 @@ final class Aarambha_DS
         }
 
         // For testing purpose.
-        // $this->admin();
+        $this->admin();
     }
 
     /**
