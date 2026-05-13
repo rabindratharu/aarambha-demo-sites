@@ -18,6 +18,9 @@ if ( ! class_exists( 'WP_Importer' ) ) {
 	return;
 }
 
+use WordPress\DataLiberation\URL\WPURL;
+use function WordPress\DataLiberation\URL\wp_rewrite_urls;
+
 /** Display verbose errors */
 define( 'IMPORT_DEBUG', false );
 
@@ -32,6 +35,9 @@ require dirname( __FILE__ ) . '/class-wxr-parser-xml.php';
 
 /** WXR_Parser_Regex class */
 require dirname( __FILE__ ) . '/class-wxr-parser-regex.php';
+
+/** Functions missing in older WordPress versions. */
+require dirname( __FILE__ ) . '/php-toolkit/load.php';
 
 /**
  * Aarambha_DS_WXR_Importer Class.
@@ -49,6 +55,8 @@ class Aarambha_DS_WXR_Importer extends WP_Importer {
 	var $categories = array();
 	var $tags = array();
 	var $base_url = '';
+	var $base_url_parsed = null;
+	var $site_url_parsed = null;
 
 	// mappings from old information to new
 	var $processed_authors = array();
@@ -60,9 +68,17 @@ class Aarambha_DS_WXR_Importer extends WP_Importer {
 	var $menu_item_orphans = array();
 	var $missing_menu_items = array();
 
-	var $fetch_attachments = false;
+	var $fetch_attachments = true;
 	var $url_remap = array();
 	var $featured_images = array();
+
+	/**
+	 * Import options.
+	 *
+	 * @since 0.9.1
+	 * @var array
+	 */
+	var $options = array();
 
 	/**
 	 * Registered callback function for the WordPress Importer
@@ -88,7 +104,7 @@ class Aarambha_DS_WXR_Importer extends WP_Importer {
 				$this->id = (int) $_POST['import_id'];
 				$file = get_attached_file( $this->id );
 				set_time_limit(0);
-				$this->import( $file );
+				$this->import( $file, array( 'rewrite_urls' => '1' === $_POST['rewrite_urls'] ) );
 				break;
 		}
 
@@ -98,9 +114,18 @@ class Aarambha_DS_WXR_Importer extends WP_Importer {
 	/**
 	 * The main controller for the actual import stage.
 	 *
-	 * @param string $file Path to the WXR file for importing
+	 * @param string $file    Path to the WXR file for importing
+	 * @param array  $options Options to control import behavior. Supported:
+	 *                       - 'rewrite_urls' (bool) Enable rewriting URLs in post content/excerpt.
 	 */
-	function import( $file ) {
+	function import( $file, $options = array() ) {
+		$this->options = wp_parse_args(
+			$options,
+			array(
+				'rewrite_urls' => false,
+			)
+		);
+
 		add_filter( 'import_post_meta_key', array( $this, 'is_valid_meta_key' ) );
 		add_filter( 'http_request_timeout', array( &$this, 'bump_request_timeout' ) );
 
@@ -152,6 +177,12 @@ class Aarambha_DS_WXR_Importer extends WP_Importer {
 		$this->categories = $import_data['categories'];
 		$this->tags = $import_data['tags'];
 		$this->base_url = esc_url( $import_data['base_url'] );
+
+		$base_url_with_trailing_slash = rtrim( $this->base_url, '/' ) . '/';
+		$this->base_url_parsed        = WPURL::parse( $base_url_with_trailing_slash );
+
+		$site_url_with_trailing_slash = rtrim( get_site_url(), '/' ) . '/';
+		$this->site_url_parsed        = WPURL::parse( $site_url_with_trailing_slash );
 
 		wp_defer_term_counting( true );
 		wp_defer_comment_counting( true );
@@ -281,6 +312,12 @@ class Aarambha_DS_WXR_Importer extends WP_Importer {
 		<label for="import-attachments"><?php _e( 'Download and import file attachments', 'aarambha-demo-sites' ); ?></label>
 	</p>
 <?php endif; ?>
+
+	<h3><?php _e( 'Content Options', 'aarambha-demo-sites' ); ?></h3>
+	<p>
+		<input type="checkbox" value="1" name="rewrite_urls" id="rewrite-urls" checked="checked" />
+		<label for="rewrite-urls"><?php _e( 'Change all imported URLs that currently link to the previous site so that they now link to this site', 'aarambha-demo-sites' ); ?></label>
+	</p>
 
 	<p class="submit"><input type="submit" class="button" value="<?php esc_attr_e( 'Submit', 'aarambha-demo-sites' ); ?>" /></p>
 </form>
@@ -704,6 +741,14 @@ class Aarambha_DS_WXR_Importer extends WP_Importer {
 				$postdata = apply_filters( 'wp_import_post_data_processed', $postdata, $post );
 
 				$postdata = wp_slash( $postdata );
+
+				if ( $this->options['rewrite_urls'] ) {
+					$url_mapping = array(
+						$this->base_url_parsed->toString() => $this->site_url_parsed,
+					);
+					$postdata['post_content'] = wp_rewrite_urls( $postdata['post_content'], $url_mapping );
+					$postdata['post_excerpt'] = wp_rewrite_urls( $postdata['post_excerpt'], $url_mapping );
+				}
 
 				if ( 'attachment' == $postdata['post_type'] ) {
 					$remote_url = ! empty($post['attachment_url']) ? $post['attachment_url'] : $post['guid'];
