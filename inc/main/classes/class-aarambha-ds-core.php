@@ -19,6 +19,7 @@ if (!defined('WPINC')) {
     exit;    // Exit if accessed directly.
 }
 
+
 /**
  * Class:: Aarambha_DS_Core.
  *
@@ -117,23 +118,23 @@ class Aarambha_DS_Core
      */
     private function injectImporter()
     {
-        if ( ! defined( 'WP_LOAD_IMPORTERS' ) ) {
-			define( 'WP_LOAD_IMPORTERS', true );
-		}
+        if (! defined('WP_LOAD_IMPORTERS')) {
+            define('WP_LOAD_IMPORTERS', true);
+        }
 
         // Load Importer API.
-		require_once ABSPATH . 'wp-admin/includes/import.php';
+        require_once ABSPATH . 'wp-admin/includes/import.php';
 
-		if ( ! class_exists( 'WP_Importer' ) ) {
-			$class_wp_importer = ABSPATH . 'wp-admin/includes/class-wp-importer.php';
+        if (! class_exists('WP_Importer')) {
+            $class_wp_importer = ABSPATH . 'wp-admin/includes/class-wp-importer.php';
 
-			if ( file_exists( $class_wp_importer ) ) {
-				require $class_wp_importer;
-			}
-		}
+            if (file_exists($class_wp_importer)) {
+                require $class_wp_importer;
+            }
+        }
 
-		// Include WXR Importer.
-		require dirname( __FILE__ ) . '/wordpress-importer/class-wxr-importer.php';
+        // Include WXR Importer.
+        require dirname(__FILE__) . '/wordpress-importer/class-wp-import.php';
     }
 
     /**
@@ -266,46 +267,86 @@ class Aarambha_DS_Core
      * 
      * @return bool
      */
+    /**
+     * Begin the import process.
+     * 
+     * @param string $file Path to the WXR file
+     * @param array $req Request parameters
+     * @return array|bool
+     */
     public function content($file, $req = [])
     {
-
         $this->injectImporter();
 
         if (!empty($req)) {
             $this->request = $req;
         }
 
-        $wp_import                    = new Aarambha_DS_WXR_Importer();
-		$wp_import->fetch_attachments = true;
+        $wp_import = new Aarambha_DS_WP_Importer();
+        $wp_import->fetch_attachments = true;
+
+        // Add error handler to catch WordPress errors
+        add_action('import_start', function () {
+            set_error_handler(function ($errno, $errstr, $errfile, $errline) {
+                throw new ErrorException($errstr, $errno, 0, $errfile, $errline);
+            });
+        });
+
+        add_action('import_end', function () {
+            restore_error_handler();
+        });
 
         try {
             ob_start();
-			$result = $wp_import->import( $file );
-			ob_end_clean();
 
-            if (is_wp_error($result)) {
-                return ['action' => 'terminate', 'message' => $result->get_error_message()];
-            } else {
-                // next action to trigger
-                $response = [
-                    'message'    => esc_html__('Importing Options', 'aarambha-demo-sites'),
-                    'action'     => 'import-customize',
+            // Prepare options for the import
+            $options = [
+                'rewrite_urls' => isset($req['rewrite_urls']) ? (bool) $req['rewrite_urls'] : true
+            ];
+
+            // Call import with the file path and options array
+            $wp_import->import($file, $options);
+
+            $output = ob_get_clean();
+
+            // Check if import was successful by looking for error messages in output
+            if (strpos($output, 'error') !== false || strpos($output, 'Failed') !== false) {
+                return [
+                    'action' => 'terminate',
+                    'message' => esc_html__('Import failed. Please check the WXR file and try again.', 'aarambha-demo-sites')
                 ];
-
-                return $response;
             }
+
+            // Success - continue to next step
+            $response = [
+                'message'    => esc_html__('Importing Options', 'aarambha-demo-sites'),
+                'action'     => 'import-customize',
+            ];
+
+            return $response;
         } catch (Exception $e) {
-            return ['action'  => 'terminate', 'message' =>  $e->getMessage()];
+            ob_end_clean();
+            restore_error_handler();
+            return [
+                'action' => 'terminate',
+                'message' => $e->getMessage()
+            ];
+        } catch (Error $e) {
+            ob_end_clean();
+            restore_error_handler();
+            return [
+                'action' => 'terminate',
+                'message' => $e->getMessage()
+            ];
         }
-        return true;
     }
 
     public function customizer($import_file)
     {
         // Include WXR Importer.
-        require dirname( __FILE__ ) . '/customize/class-aarambha-ds-customize-importer.php';
+        require dirname(__FILE__) . '/customize/class-aarambha-ds-customize-importer.php';
 
-        $results = Aarambha_DS_Customize_Importer::import( $import_file );
+        $results = Aarambha_DS_Customize_Importer::import($import_file);
 
         return true;
     }
@@ -318,9 +359,9 @@ class Aarambha_DS_Core
     public function widgets($import_file)
     {
         // Include WXR Importer.
-        require dirname( __FILE__ ) . '/class-aarambha-ds-widget-importer.php';
+        require dirname(__FILE__) . '/class-aarambha-ds-widget-importer.php';
 
-        $results = Aarambha_DS_Widget_Importer::import( $import_file );
+        $results = Aarambha_DS_Widget_Importer::import($import_file);
 
         return true;
     }
